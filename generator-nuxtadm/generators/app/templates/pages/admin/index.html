@@ -1,0 +1,227 @@
+<template>
+  <div class="contentBody">
+    <a-row type="flex">
+      <a-col :xs="14" :lg="20">
+        <a-input v-model="search" placeholder="search" @pressEnter="doSearch" />
+      </a-col>
+      <a-col :xs="10" :lg="4">
+        <a-button style="width: 100%" type="primary" @click="navNew">
+          + New
+        </a-button>
+      </a-col>
+    </a-row>
+
+    <a-table
+      :columns="columns"
+      :row-key="record => record.uid"
+      :data-source="list"
+      :pagination="pagination"
+      :loading="loading"
+      @change="handleTableChange"
+    >
+      <template slot="id" slot-scope="text, record">
+        <nuxt-link :to="'/cp1/<%= table %>/'+record._id">
+          {{ record._id }}
+        </nuxt-link>
+      </template>
+      <template slot="date" slot-scope="text">{{ text | dateFormat('date') }}</template>
+      <template slot="image" slot-scope="img, record">
+        <img
+          v-if="img"
+          :src="record.imageURL"
+          alt="image"
+          style="max-height: 200px; max-width: 200px;"
+        >
+      </template>
+    </a-table>
+    <!--end content img-->
+  </div>
+</template>
+
+<script>
+'use strict'
+
+import { pagination as gPage } from '~/shared/general'
+import { mapState, mapActions } from 'vuex'
+import { ObjectId } from 'bson'
+
+import {
+  Table as ATable,
+  Input as AInput,
+  Row as ARow,
+  Col as ACol,
+  Button as AButton
+} from 'ant-design-vue'
+
+const columns = [
+  {
+    title: 'ID',
+    dataIndex: '_id',
+    scopedSlots: { customRender: 'id' }
+  }
+<% for (var i in fields) { 
+  const field = fields[i] %>
+  ,{
+    title: '<%= field.label %>',
+    width: '15%',
+    //sorter: true,
+    //filterMultiple: false,
+<% if(field.inputType == 'radio' || field.inputType == 'select') { %>
+    filters: [{ text: 'Yes', value: 1 }, { text: 'No', value: 0 }],<% } %>
+    dataIndex: '<%= field.name %>',
+  }<% } %>
+]
+
+export default {
+  components: {
+    ATable,
+    AInput,
+    ARow,
+    ACol,
+    AButton
+  },
+
+  data() {
+    return {
+      search: '',
+      pagination: {
+        position: 'bottom',
+        current: 1,
+        pageSize: gPage.limit,
+        total: 0
+      },
+      parentFilters: {},
+      columns: columns,
+      lastSetting: { pagination: {}, filters: {}, sorter: null }
+    }
+  },
+
+  computed: {
+    ...mapState('<%= table %>', ['list', 'page', 'loading', 'count', 'limit'])
+  },
+
+  async created() {
+    this.$store.dispatch('env/setTitle', '<%= niceTableName %>')
+
+    await this.handleFetch({
+      page: this.page,
+      limit: this.limit,
+      sorts: [],
+      filters: this.parentFilters
+    })
+  },
+
+  methods: {
+    ...mapActions('<%= table %>', ['fetch<%= pluralClassName %>List']),
+    doSearch() {
+      this.handleTableChange(
+        this.lastSetting.pagination,
+        this.lastSetting.filters,
+        this.lastSetting.sorter
+      )
+    },
+    async handleTableChange(pagination, filters, sorter) {
+      this.lastSetting = {
+        pagination: pagination,
+        filters: filters,
+        sorter: sorter
+      }
+      // console.log(pagination, filters, sorter)
+
+      let sorts = []
+      if (sorter && sorter.field) {
+        sorts = [
+          {
+            field: sorter.field,
+            dir: sorter.order === 'ascend' ? 'asc' : 'desc'
+          }
+        ]
+      }
+      // console.log('sorts', sorts, sorter)
+
+      //take parent dependent filter as base
+      let pFilter = this.parentFilters
+
+      if (this.search !== '') {
+        // let re = new RegExp('.*' + this.search + '.*', 'i')
+        // let re = '.*' + this.search + '.*'
+        pFilter.search = this.search
+      } else {
+        delete pFilter.search
+      }
+
+      let filterKeys = Object.keys(filters)
+      if (filterKeys.length > 0) {
+        for (let c = 0; c < filterKeys.length; c++) {
+          const key = filterKeys[c]
+          if (filters[key].length === 0) {
+            continue
+          }
+          switch (key) {
+            case 'isAdmin':
+              pFilter[key] = { should: [] }
+              let filterRow = { match: {} }
+              let isAdmin = filters[key][0] === 1
+              filterRow.match[key] = isAdmin
+              pFilter[key].should.push(filterRow)
+              if (!isAdmin) {
+                pFilter[key].should.push({ isAdmin: null })
+              }
+              console.log('pFilter', pFilter[key])
+              break
+            default:
+              if (Array.isArray(filters[key])) {
+                pFilter[key] = []
+                console.log('filters', key, ' is array', filters[key])
+                for (let c = 0; c < filters[key].length; c++) {
+                  let filterRow = { term: {} }
+                  filterRow.term[key] = filters[key][c]
+                  pFilter[key].push(filterRow)
+                }
+              } else {
+                let filterRow = { term: {} }
+                filterRow.term[key] = filters[key]
+                pFilter[key] = filterRow
+              }
+          }
+        }
+      }
+
+      // console.log('filters', filters)
+
+      await this.handleFetch({
+        force: true,
+        page: pagination.current || this.pagination.current,
+        limit: pagination.pageSize || this.pagination.pageSize,
+
+        sorts: sorts,
+        filters: pFilter
+      })
+    },
+
+    navNew() {
+      this.$router.push('/cp1/<%= table %>/new')
+    },
+
+    async handleFetch(params) {
+      try {
+        await this.fetch<%= pluralClassName %>List(params)
+        this.pagination.current = this.page
+        this.pagination.pageSize = this.limit
+        this.pagination.total = this.count
+      } catch (e) {
+        this.$store.dispatch('<%= table %>/loading', false)
+        this.$store.dispatch('alert/error', e.message)
+      }
+    }
+  },
+
+  layout() {
+    return 'member'
+  },
+  middleware: ['isAuth']
+}
+</script>
+
+<style>
+</style>

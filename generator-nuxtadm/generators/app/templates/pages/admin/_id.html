@@ -1,0 +1,361 @@
+<template>
+  <div class="contentBody">
+    <a-breadcrumb>
+      <a-breadcrumb-item href="/cp/<%= table %>">
+        <a-icon type="<%= singularTable %>" />
+        <n-link to="/cp1/<%= table %>">
+          <%= pluralClassName %> List
+        </n-link>
+      </a-breadcrumb-item>
+      <a-breadcrumb-item>
+        <%= niceSingularTable %>
+      </a-breadcrumb-item>
+    </a-breadcrumb>
+
+    <a-spin tip="Loading..." :spinning="loading">
+      <a-tabs default-active-key="1">
+        <a-tab-pane key="1" tab="General">
+          <a-form
+            v-if="loaded"
+            layout="horizontal"
+            method="post"
+            class="frm"
+            @submit.prevent="handleSubmit"
+          >
+            <fieldset>
+              <% for (var i in fields){ 
+                const field = fields[i] %>
+              <a-form-item
+                label="<%=field.label %>"
+                :label-col="formItemLayout.labelCol"
+                :wrapper-col="formItemLayout.wrapperCol"
+              >
+                <% if(field.inputType == 'select') { %>
+                <a-select v-model="<%=singularTable %>.<%= field.name %>">
+                  <a-select-option v-for="option in <%= field.name %>Options" :key="option.id" :value="option.id">
+                    {{option.label}}
+                  </a-select-option>
+                </a-select>
+                <% } else if(field.inputType == 'radio') { %>
+                <a-radio-group v-model="<%=singularTable %>.<%=field.name %>">
+                  <a-radio
+                    v-for="option in <%= field.name %>Options"
+                    v-bind:key="option.id"
+                    :value="option.id"
+                  >{{option.label}}</a-radio>
+                </a-radio-group>
+                <% } else if(field.inputType == 'checkboxes') { %>
+                <a-checkbox-group :value="<%=singularTable %>.<%=field.name %>" :options="<%= field.name %>Options()" @change="change<%=field.uname %>" />
+                <% } else if(field.inputType == 'textarea') { %>
+                <a-textarea v-model="<%=singularTable %>.<%=field.name %>" placeholder="<%=field.label %>" :autosize="{ minRows: 3 }" />
+                <% } else if(field.inputType == 'text') { %>
+                <a-input v-model="<%=singularTable %>.<%=field.name %>" placeholder="<%=field.label %>" />
+                <% } else if(field.inputType == 'number') { %>
+                <a-input-number v-model="<%=singularTable %>.<%=field.name %>" placeholder="<%=field.label %>" />
+                <% } else if(field.inputType == 'date') { %>
+                <a-date-picker v-model="<%=singularTable %>.<%=field.name %>" :disabledDate="true"/>
+                <% } else if(field.inputType == 'datetime') { %>
+                <a-date-picker v-model="<%=singularTable %>.<%=field.name %>" />
+                <% } else if(field.inputType == 'tag') { %>
+                <a-select mode="tags" v-model="<%=singularTable%>.<%= field.name %>" :tokenSeparators="[',']">
+                  <a-select-option v-for="option in <%= field.name %>Options" :key="option.id" :value="option.id">
+                    {{option.label}}
+                  </a-select-option>
+                </a-select>
+                <% } else if(field.inputType == 'listinput') { %>
+                <list-input :value.sync="<%=singularTable%>.<%= field.name %>" />
+                <% } else if(field.inputType == 'static') { %>
+                <div>{{<%=singularTable %>.<%=field.name %>}}</div>
+                <% } else if(field.inputType == 'user') { %>
+                <user-select :id.sync="<%=singularTable%>.<%= field.name %>" />
+                <% } else if(field.inputType == 'switch') { %>
+                <a-switch checkedChildren="Yes" unCheckedChildren="No" v-model="<%=singularTable %>.<%=field.name %>" />
+                <% } else if(field.inputType == 'html') { %>
+                <tip-tap-basic
+                  v-model="<%=singularTable %>.<%= field.name %>"
+                />
+                <% } else if(field.inputType == 'religion') { %>
+                <religion-input :value.sync="<%=singularTable %>.<%= field.name %>"/>
+                <% } else if(field.inputType == 'optionInput') { %>
+                <option-input :value.sync="<%=singularTable %>.<%= field.name %>"/>
+                <% } else if(field.inputType == 'file') { %>
+                <a-upload
+                  name="<%=field.name %>"
+                  list-type="picture-card"
+                  class="avatar-uploader"
+                  :show-upload-list="false"
+                  @change="handleUpload<%=field.uname %>"
+                >
+                  <img v-if="<%= singularTable %>.<%=field.name %>URL" :src="<%=field.name %>URL.t512" alt="<%=field.name %>" style="max-height: 200px; max-width: 500px;">
+                  <div v-else>
+                    <a-icon :type="loading ? 'loading' : 'plus'" />
+                    <div class="ant-upload-text">
+                      Upload
+                    </div>
+                  </div>
+                </a-upload>
+                <% } %>
+              </a-form-item>
+              <% } %>
+            </fieldset>
+
+            <a-row type="flex">
+              <a-col :offset="formItemLayout.labelCol.span" :span="formItemLayout.wrapperCol.span">
+                <a-button type="primary" @click="handleSubmit">
+                  Save
+                </a-button>
+
+                <a-button v-if="<%=singularTable %> && <%=singularTable %>._id" class="bg-red" @click="confirmDelete">
+                  Delete
+                </a-button>
+              </a-col>
+            </a-row>
+          </a-form>
+        </a-tab-pane>
+      </a-tabs>
+    </a-spin>
+  </div>
+</template>
+
+<script>
+'use strict'
+
+import {
+  Tabs as ATabs,
+  Form as AForm,
+  Upload as AUpload,
+  Breadcrumb as ABreadcrumb,
+  InputNumber as AInputNumber,
+  Input as AInput,
+  DatePicker as ADatePicker,
+  Select as ASelect,
+  Radio as ARadio,
+  Spin as ASpin,
+  Switch as ASwitch,
+  Button as AButton,
+  Icon as AIcon,
+  Row as ARow,
+  Col as ACol,
+  Checkbox as ACheckbox
+} from 'ant-design-vue'
+
+import { cloneData } from '~/shared/general'
+import { StandardError } from '~/errors/base'
+import { mapState, mapActions } from 'vuex'
+import { differences } from '~/shared/diff'
+import _ from 'lodash'
+import UserSelect from '~/components/form/user'
+import TipTapBasic from '~/components/form/tiptap_basic'
+import ReligionInput from '~/components/form/religion_input'
+import ListInput from '~/components/form/list_input'
+import OptionInput from '~/components/form/option_input'
+
+const ABreadcrumbItem = ABreadcrumb.Item
+const AInputGroup = AInput.Group
+const ARadioGroup = ARadio.Group
+const ASelectOption = ASelect.Option
+const AFormItem = AForm.Item
+const ARadioButton = ARadio.Button
+const ATextarea = AInput.TextArea
+const ATabPane = ATabs.TabPane
+const ACheckboxGroup = ACheckbox.Group
+
+export default {
+  components: {
+    // Register
+    ATabs,
+    ATabPane,
+    AUpload,
+    ARow,
+    ACol,
+    AIcon,
+    ADatePicker,
+    AInputNumber,
+    AButton,
+    ABreadcrumb,
+    ABreadcrumbItem,
+    AInput,
+    ATextarea,
+    AInputGroup,
+    ARadio,
+    ARadioGroup,
+    ARadioButton,
+    ACheckboxGroup,
+    ACheckbox,
+    ASelect,
+    ASelectOption,
+    ASpin,
+    ASwitch,
+    AForm,
+    AFormItem,
+    UserSelect,
+    ListInput,
+    ReligionInput,
+    TipTapBasic,
+    OptionInput
+  },
+
+  data() {
+    let res = {
+      <%= singularTable %>: {},
+      inputFile: null,
+      <% for (var i in fields){ 
+            const field = fields[i]
+            if(field.inputType=='file') { %><%= field.name %>URL: '',
+      input<%= field.uname %>: null,
+<% } } %>loaded: false
+    }
+
+<% for (var i in fields) { 
+    const field = fields[i] %><% if(field.inputType == 'select' || field.inputType == 'tag' || field.inputType == 'radio' || field.inputType == 'checkboxes') { %>
+    res['<%= field.name %>Options'] = [ { id: null, label: ''}]<% } %><% } %>
+
+    return res
+  },
+
+  computed: {
+    ...mapState('<%= table %>', ['loading']),
+    formItemLayout() {
+      // let formLayout = 'horizontal'
+      return {
+        labelCol: { span: 6 },
+        wrapperCol: { span: 18 }
+      }
+    }
+  },
+  // 
+  watch: {
+    // <%= singularTable %>: {
+    //   handler(val, oldval) {
+    //     if (!this.loaded) return // ignore
+    //     // console.log('changed', val, oldval)
+    //     console.log('changes', differences(val, this.<%= singularTable %>))
+    //     // do stuff
+    //   },
+    //   deep: true
+    // }
+  },
+
+  async created() {
+    this.$store.dispatch('env/setTitle', '<%= niceTableName %>')
+    // console.log('query', this.$route.params)
+    await this.fetch<%= singularClassName %>()
+    this.loaded = true
+  },
+
+  methods: {
+    ...mapActions('<%= table %>', ['set<%= singularClassName %>Field']),
+    ...mapActions({
+      checkPassword: '<%= singularTable %>/checkPassword',
+      save<%= singularClassName %>: '<%= table %>/save<%= singularClassName %>'
+    }),
+
+    async fetch<%= singularClassName %>() {
+      const id = this.$route.params.id
+      try {
+        let res = await this.$store.dispatch('<%= table %>/fetch<%= singularClassName %>', id)
+        this.<%= singularTable %> = cloneData(this.$store.state.<%= table %>.record)
+
+      } catch (e) {
+        console.error(e)
+        this.$store.dispatch('alert/error', e.message)
+      }
+    },
+    async confirmDelete() {
+      if (!confirm('Confirm delete? (cannot undo)')) {
+        return
+      }
+
+      try {
+        await this.$store.dispatch(
+          '<%= table %>/delete<%= singularClassName %>',
+          this.<%= singularTable %>._id
+        )
+        this.$store.dispatch('alert/successWithOption', {
+          message: 'Record has been deleted.',
+          link: '/cp1/<%= table %>',
+          linkLabel: 'Return to list'
+        })
+      } catch (e) {
+        this.$store.dispatch('alert/error', e.message)
+      }
+    },
+    <% for (var i in fields){
+            const field = fields[i]
+            if(field.inputType=='file') { %>
+    async handleUpload<%=field.uname %>(e, upload) {
+      if (this.loading) return
+      // console.log('upload?', e, files)
+      this.input<%=field.uname %> = upload.file
+      console.log('<%=field.uname %>', this.input<%=field.uname %>, this.<%= singularTable %>)
+      if (this.<%= singularTable %>._id) {
+        this.doUpload<%=field.uname %>()
+      }
+    },
+    async doUpload<%=field.uname %>() {
+      if (this.input<%=field.uname %>) {
+        let i = this.input<%=field.uname %>
+        console.log('uploading', i)
+        let res = await this.$store.dispatch('<%= table %>/uploadFile', {
+          name: i.name,
+          field: '<%= field.name %>',
+          file: i.originFileObj,
+          <%=singularTable %>Id: this.<%=singularTable %>._id
+        })
+        console.log('uploaded', res)
+
+        this.<%=field.name %>URL = res.url
+        this.<%= singularTable %>.<%=field.name %> = res.path
+        this.<%= singularTable %> = await this.$store.dispatch(
+          '<%= table %>/load<%= singularClassName %>',
+          this.<%= singularTable %>
+        )
+        this.input<%=field.uname %> = null
+        this.$forceUpdate()
+      } else {
+        console.error('<%=field.name %> input not set')
+      }
+    },<% } else if(field.inputType=='checkboxes') { %>
+    change<%= field.uname %>(change) {
+      // console.log('change', change)
+      this.<%= singularTable %>.<%= field.name %> = change
+    },<% }
+    }%>
+    
+    async handleSubmit() {
+      // this.$router.redirect('/')
+      try {
+        let isNew = !this.<%= singularTable %>._id
+        let res = await this.save<%= singularClassName %>(this.<%= singularTable %>)
+        if(isNew) {
+          this.<%= singularTable %>._id = res._id
+          // await this.doUploadThumb()
+          
+          this.$router.push('/cp1/<%= table %>/'+res._id)
+        }
+
+        this.$store.dispatch('alert/success', 'Saved')
+      } catch (e) {
+        console.error('unknown error', e)
+        this.$store.dispatch('<%= table %>/loading', false)
+        this.$store.dispatch('alert/error', e.message)
+      }
+    }
+  },
+
+  layout() {
+    return 'member'
+  },
+  middleware: ['isAuth']
+}
+</script>
+
+<style>
+.ant-spin-spinning {
+  display: block;
+  position: relative;
+  width: 100%;
+  min-height: 500px;
+  height: 100%;
+}
+</style>

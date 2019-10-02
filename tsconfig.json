@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "lib": ["dom", "es2015"],
+    "module": "es2015",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+
+    "outDir": "lib",
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "strictNullChecks": true,
+    "removeComments": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "allowJs": true,
+    "paths": {
+      "~/*": ["./*"]
+    },
+    "sourceMap": true
+  },
+  "exclude": ["node_modules", "**/*.spec.ts", "generator-nuxtadm", "dist"]
+}

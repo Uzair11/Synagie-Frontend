@@ -1,0 +1,37 @@
+{
+  "extends": [
+    "plugin:prettier/recommended"
+  ],
+  "env": {
+    "es6": true,
+    "node": true
+  },
+  parser: 'vue-eslint-parser',
+  "rules": {
+    "@typescript-eslint/indent": ["error", 2],
+    '@typescript-eslint/camelcase': 'off',
+    '@typescript-eslint/no-unused-vars': 'off',
+    '@typescript-eslint/class-name-casing': 'off',
+    '@typescript-eslint/member-delimiter-style': 'off',
+    'no-unused-vars': 'off',
+    'prefer-const': 'off',
+    'require-await': 'off',
+    'no-constant-condition': 'off',
+    'no-self-compare': 'off',
+    'vue/max-attributes-per-line': 'off',
+    'vue/no-unused-components': 'off',
+    "import/no-unresolved": [
+      "error",
+      { "ignore": ["client/build/asset-manifest.json"] }
+    ],
+    "max-len": ["error", { "code": 9999 }],
+    "import/no-extraneous-dependencies": [
+      "error",
+      {
+        "devDependencies": [
+          "**/*.test.js"
+        ]
+      }
+    ]
+  }
+}
